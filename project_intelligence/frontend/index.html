@@ -1,0 +1,1842 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Intelligence - Virtual Scrum Master</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 1400px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .content {
+            padding: 40px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+            font-family: inherit;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 30px;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+        }
+
+        .btn-success {
+            background: #10b981;
+        }
+
+        .btn-small {
+            width: auto;
+            padding: 8px 16px;
+            font-size: 0.9em;
+            margin: 5px;
+        }
+
+        .link {
+            color: #667eea;
+            cursor: pointer;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .link:hover {
+            text-decoration: underline;
+        }
+
+        .text-center {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .alert-error {
+            background: #fee;
+            color: #c33;
+            border: 1px solid #fcc;
+        }
+
+        .alert-success {
+            background: #efe;
+            color: #3c3;
+            border: 1px solid #cfc;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .card {
+            background: white;
+            border: 2px solid #e1e8ed;
+            border-radius: 12px;
+            padding: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .card h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .stat {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e1e8ed;
+        }
+
+        .stat:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            color: #666;
+        }
+
+        .stat-value {
+            font-weight: 700;
+            color: #333;
+        }
+
+        .score {
+            font-size: 3em;
+            font-weight: 700;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .score.good {
+            color: #10b981;
+        }
+
+        .score.warning {
+            color: #f59e0b;
+        }
+
+        .score.danger {
+            color: #ef4444;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .badge-warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge-danger {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .badge-info {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .task-list {
+            margin-top: 20px;
+        }
+
+        .task-item {
+            background: #f9fafb;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 4px solid #667eea;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .task-item:hover {
+            background: #f3f4f6;
+            transform: translateX(5px);
+        }
+
+        .task-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .task-meta {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .nav-bar {
+            background: #f9fafb;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #e1e8ed;
+            flex-wrap: wrap;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .nav-link {
+            color: #667eea;
+            cursor: pointer;
+            font-weight: 600;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .nav-link:hover {
+            color: #764ba2;
+        }
+
+        .project-list {
+            margin-top: 20px;
+        }
+
+        .project-item {
+            background: white;
+            border: 2px solid #e1e8ed;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+        }
+
+        .project-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .project-name {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .health-score {
+            font-size: 1.5em;
+            font-weight: 700;
+        }
+
+        .alert-list {
+            margin-top: 15px;
+        }
+
+        .alert-item {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+        }
+
+        .alert-item.critical {
+            background: #f8d7da;
+            border-left-color: #dc3545;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            overflow-y: auto;
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 600px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h2 {
+            color: #333;
+        }
+
+        .close {
+            font-size: 2em;
+            cursor: pointer;
+            color: #999;
+            background: none;
+            border: none;
+            padding: 0;
+            width: auto;
+        }
+
+        .close:hover {
+            color: #333;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .table th,
+        .table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e1e8ed;
+        }
+
+        .table th {
+            background: #f9fafb;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .table tr:hover {
+            background: #f9fafb;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+
+            .nav-bar {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+
+        .profile-avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 3em;
+            font-weight: 700;
+            margin: 0 auto 20px;
+        }
+
+        .section-divider {
+            border-top: 2px solid #e1e8ed;
+            margin: 30px 0;
+        }
+
+        /* Dynamic Features */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            z-index: 2000;
+            min-width: 300px;
+            animation: slideIn 0.3s ease-out;
+            border-left: 4px solid #10b981;
+        }
+
+        .toast.error {
+            border-left-color: #ef4444;
+        }
+
+        .toast.warning {
+            border-left-color: #f59e0b;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+
+            to {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+        }
+
+        .loading-spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .refresh-indicator {
+            display: inline-block;
+            margin-left: 10px;
+            color: #10b981;
+            font-size: 0.9em;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 12px 40px 12px 12px;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            font-size: 1em;
+            margin-bottom: 20px;
+            transition: border-color 0.3s;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="%23999" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>');
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+        }
+
+        .search-box:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .last-updated {
+            text-align: center;
+            color: #999;
+            font-size: 0.85em;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 Project Intelligence</h1>
+            <p>Virtual Scrum Master - Predictive Project Analytics</p>
+        </div>
+
+        <!-- Login Page -->
+        <div id="loginPage" class="page active">
+            <div class="content">
+                <h2 style="margin-bottom: 30px; color: #333;">Sign In</h2>
+                <div id="loginError"></div>
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label>Username</label>
+                        <input type="text" id="loginUsername" placeholder="pm_john or alice" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="loginPassword" placeholder="password123" required>
+                    </div>
+                    <button type="submit" class="btn">Sign In</button>
+                </form>
+                <div class="text-center">
+                    <p>Don't have an account? <span class="link" onclick="showPage('registerPage')">Register here</span>
+                    </p>
+                    <p style="margin-top: 15px; color: #666; font-size: 0.9em;">
+                        Demo: pm_john / password123 (Manager)<br>
+                        alice, bob, carol / password123 (Employees)
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Register Page -->
+        <div id="registerPage" class="page">
+            <div class="content">
+                <h2 style="margin-bottom: 30px; color: #333;">Create Account</h2>
+                <div id="registerError"></div>
+                <form id="registerForm">
+                    <div class="form-group">
+                        <label>Username</label>
+                        <input type="text" id="regUsername" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="regEmail" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="regPassword" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Role</label>
+                        <select id="regRole" required>
+                            <option value="EMPLOYEE">Employee</option>
+                            <option value="PROJECT_MANAGER">Project Manager</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn">Create Account</button>
+                    <button type="button" class="btn btn-secondary" onclick="showPage('loginPage')">Back to
+                        Login</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Profile Page -->
+        <div id="profilePage" class="page">
+            <div class="nav-bar">
+                <div class="user-info">
+                    <span id="profileNavName" style="font-weight: 600;"></span>
+                </div>
+                <div class="nav-links">
+                    <a class="nav-link" onclick="backToDashboard()">← Back to Dashboard</a>
+                </div>
+            </div>
+            <div class="content">
+                <h2 style="margin-bottom: 30px; color: #333;">👤 Profile Settings</h2>
+                <div id="profileError"></div>
+
+                <div class="profile-avatar" id="profileAvatar">A</div>
+
+                <form id="profileForm">
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label>Username</label>
+                            <input type="text" id="profileUsername" readonly style="background: #f9fafb;">
+                        </div>
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" id="profileEmail" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>First Name</label>
+                        <input type="text" id="profileFirstName">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Last Name</label>
+                        <input type="text" id="profileLastName">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Role</label>
+                        <input type="text" id="profileRole" readonly style="background: #f9fafb;">
+                    </div>
+
+                    <button type="submit" class="btn btn-success">Save Changes</button>
+                </form>
+
+                <div class="section-divider"></div>
+
+                <div class="card">
+                    <h3>Performance Overview</h3>
+                    <div id="profilePerformance">Loading...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Manager Dashboard -->
+        <div id="managerDashboard" class="page">
+            <div class="nav-bar">
+                <div class="user-info">
+                    <span id="managerName" style="font-weight: 600;"></span>
+                    <span class="badge badge-info">Manager</span>
+                </div>
+                <div class="nav-links">
+                    <a class="nav-link" onclick="showPage('managerDashboard'); loadManagerDashboard();">Dashboard</a>
+                    <a class="nav-link"
+                        onclick="showPage('projectManagementPage'); loadProjectManagement();">Projects</a>
+                    <a class="nav-link" onclick="showPage('teamAnalyticsPage'); loadTeamAnalytics();">Team Analytics</a>
+                    <a class="nav-link" onclick="showPage('profilePage'); loadProfile();">Profile</a>
+                    <button class="btn btn-danger btn-small" onclick="logout()">Logout</button>
+                </div>
+            </div>
+            <div class="content">
+                <h2 style="margin-bottom: 20px; color: #333;">📊 Manager Dashboard</h2>
+
+                <div class="dashboard-grid">
+                    <div class="card">
+                        <h3>Overall Health</h3>
+                        <div class="score" id="overallHealth">--</div>
+                        <p style="text-align: center; color: #666;">System Health Score</p>
+                    </div>
+                    <div class="card">
+                        <h3>Active Alerts</h3>
+                        <div class="score danger" id="totalAlerts">--</div>
+                        <p style="text-align: center; color: #666;">Risk Notifications</p>
+                    </div>
+                    <div class="card">
+                        <h3>Overloaded Team</h3>
+                        <div class="score warning" id="overloadedCount">--</div>
+                        <p style="text-align: center; color: #666;">Employees Need Help</p>
+                    </div>
+                </div>
+
+                <div id="managerProjects" class="project-list">
+                    <h3 style="margin: 30px 0 20px; color: #333;">Your Projects</h3>
+                </div>
+
+                <div id="overloadedEmployees">
+                    <h3 style="margin: 30px 0 20px; color: #333;">Overloaded Employees</h3>
+                </div>
+            </div>
+        </div>
+
+        <!-- Employee Dashboard -->
+        <div id="employeeDashboard" class="page">
+            <div class="nav-bar">
+                <div class="user-info">
+                    <span id="employeeName" style="font-weight: 600;"></span>
+                    <span class="badge badge-success">Employee</span>
+                </div>
+                <div class="nav-links">
+                    <a class="nav-link" onclick="showPage('employeeDashboard'); loadEmployeeDashboard();">Dashboard</a>
+                    <a class="nav-link" onclick="showPage('myTasksPage'); loadMyTasks();">My Tasks</a>
+                    <a class="nav-link" onclick="showPage('profilePage'); loadProfile();">Profile</a>
+                    <button class="btn btn-danger btn-small" onclick="logout()">Logout</button>
+                </div>
+            </div>
+            <div class="content">
+                <h2 style="margin-bottom: 20px; color: #333;">👤 My Dashboard</h2>
+
+                <div class="dashboard-grid">
+                    <div class="card">
+                        <h3>Performance Score</h3>
+                        <div class="score" id="performanceScore">--</div>
+                        <p style="text-align: center; color: #666;">Your Rating</p>
+                    </div>
+                    <div class="card">
+                        <h3>Workload Status</h3>
+                        <div id="workloadStatus"
+                            style="text-align: center; font-size: 2em; font-weight: 700; margin: 20px 0;">--</div>
+                    </div>
+                    <div class="card">
+                        <h3>Task Summary</h3>
+                        <div class="stat">
+                            <span class="stat-label">Active Tasks</span>
+                            <span class="stat-value" id="activeTasks">--</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Completed</span>
+                            <span class="stat-value" id="completedTasks">--</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-top: 30px;">
+                    <h3>Task Breakdown</h3>
+                    <div class="stat">
+                        <span class="stat-label">📋 To Do</span>
+                        <span class="stat-value" id="todoCount">--</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">🔄 In Progress</span>
+                        <span class="stat-value" id="inProgressCount">--</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">🚫 Blocked</span>
+                        <span class="stat-value" id="blockedCount">--</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">✅ Done</span>
+                        <span class="stat-value" id="doneCount">--</span>
+                    </div>
+                </div>
+
+                <div id="employeeTasks" class="task-list">
+                    <h3 style="margin: 30px 0 20px; color: #333;">My Active Tasks</h3>
+                </div>
+
+                <div id="employeeSprints">
+                    <h3 style="margin: 30px 0 20px; color: #333;">Current Sprints</h3>
+                </div>
+            </div>
+        </div>
+
+        <!-- Project Management Page (Manager) -->
+        <div id="projectManagementPage" class="page">
+            <div class="nav-bar">
+                <div class="user-info">
+                    <span style="font-weight: 600;">Project Management</span>
+                </div>
+                <div class="nav-links">
+                    <a class="nav-link" onclick="showPage('managerDashboard'); loadManagerDashboard();">← Back to
+                        Dashboard</a>
+                </div>
+            </div>
+            <div class="content">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+                    <h2 style="color: #333;">🗂️ Manage Projects</h2>
+                    <button class="btn btn-success btn-small" onclick="showCreateProjectModal()">+ Create
+                        Project</button>
+                </div>
+
+                <div id="projectsList"></div>
+            </div>
+        </div>
+
+        <!-- My Tasks Page (Employee) -->
+        <div id="myTasksPage" class="page">
+            <div class="nav-bar">
+                <div class="user-info">
+                    <span style="font-weight: 600;">My Tasks</span>
+                </div>
+                <div class="nav-links">
+                    <a class="nav-link" onclick="showPage('employeeDashboard'); loadEmployeeDashboard();">← Back to
+                        Dashboard</a>
+                </div>
+            </div>
+            <div class="content">
+                <h2 style="margin-bottom: 30px; color: #333;">📝 My Tasks</h2>
+
+                <div class="card" style="margin-bottom: 20px;">
+                    <h3>Filter Tasks</h3>
+                    <div class="grid-2">
+                        <select id="taskStatusFilter" onchange="loadMyTasks()">
+                            <option value="">All Statuses</option>
+                            <option value="TODO">To Do</option>
+                            <option value="IN_PROGRESS">In Progress</option>
+                            <option value="BLOCKED">Blocked</option>
+                            <option value="DONE">Done</option>
+                        </select>
+                        <select id="taskPriorityFilter" onchange="loadMyTasks()">
+                            <option value="">All Priorities</option>
+                            <option value="LOW">Low</option>
+                            <option value="MEDIUM">Medium</option>
+                            <option value="HIGH">High</option>
+                            <option value="CRITICAL">Critical</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="myTasksList"></div>
+            </div>
+        </div>
+
+        <!-- Team Analytics Page (Manager) -->
+        <div id="teamAnalyticsPage" class="page">
+            <div class="nav-bar">
+                <div class="user-info">
+                    <span style="font-weight: 600;">Team Analytics</span>
+                </div>
+                <div class="nav-links">
+                    <a class="nav-link" onclick="showPage('managerDashboard'); loadManagerDashboard();">← Back to
+                        Dashboard</a>
+                </div>
+            </div>
+            <div class="content">
+                <h2 style="margin-bottom: 30px; color: #333;">📈 Team Analytics</h2>
+
+                <div id="teamAnalyticsContent"></div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Create Project Modal -->
+    <div id="createProjectModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Create New Project</h2>
+                <button class="close" onclick="closeCreateProjectModal()">&times;</button>
+            </div>
+            <div id="createProjectError"></div>
+            <form id="createProjectForm">
+                <div class="form-group">
+                    <label>Project Name</label>
+                    <input type="text" id="newProjectName" required>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="newProjectDescription"></textarea>
+                </div>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Start Date</label>
+                        <input type="date" id="newProjectStartDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label>End Date</label>
+                        <input type="date" id="newProjectEndDate" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-success">Create Project</button>
+                <button type="button" class="btn btn-secondary" onclick="closeCreateProjectModal()">Cancel</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Create Sprint Modal -->
+    <div id="createSprintModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Create New Sprint</h2>
+                <button class="close" onclick="closeCreateSprintModal()">&times;</button>
+            </div>
+            <div id="createSprintError"></div>
+            <form id="createSprintForm">
+                <input type="hidden" id="sprintProjectId">
+                <div class="form-group">
+                    <label>Sprint Number</label>
+                    <input type="number" id="newSprintNumber" required min="1">
+                </div>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Start Date</label>
+                        <input type="date" id="newSprintStartDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label>End Date</label>
+                        <input type="date" id="newSprintEndDate" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-success">Create Sprint</button>
+                <button type="button" class="btn btn-secondary" onclick="closeCreateSprintModal()">Cancel</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Create Task Modal -->
+    <div id="createTaskModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Create New Task</h2>
+                <button class="close" onclick="closeCreateTaskModal()">&times;</button>
+            </div>
+            <div id="createTaskError"></div>
+            <form id="createTaskForm">
+                <input type="hidden" id="taskProjectId">
+                <div class="form-group">
+                    <label>Task Title</label>
+                    <input type="text" id="newTaskTitle" required>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="newTaskDescription"></textarea>
+                </div>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Priority</label>
+                        <select id="newTaskPriority" required>
+                            <option value="LOW">Low</option>
+                            <option value="MEDIUM">Medium</option>
+                            <option value="HIGH">High</option>
+                            <option value="CRITICAL">Critical</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Estimated Hours</label>
+                        <input type="number" id="newTaskEstimatedHours" required min="0" step="0.5">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Assign To (Employee)</label>
+                    <select id="newTaskAssignee"></select>
+                </div>
+                <div class="form-group">
+                    <label>Sprint (Optional)</label>
+                    <select id="newTaskSprint">
+                        <option value="">No Sprint</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-success">Create Task</button>
+                <button type="button" class="btn btn-secondary" onclick="closeCreateTaskModal()">Cancel</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Update Task Hours Modal -->
+    <div id="updateHoursModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Update Task Hours</h2>
+                <button class="close" onclick="closeUpdateHoursModal()">&times;</button>
+            </div>
+            <div id="updateHoursError"></div>
+            <form id="updateHoursForm">
+                <input type="hidden" id="updateHoursTaskId">
+                <div class="form-group">
+                    <label>Task: <span id="updateHoursTaskTitle"></span></label>
+                </div>
+                <div class="form-group">
+                    <label>Actual Hours Worked</label>
+                    <input type="number" id="updateActualHours" required min="0" step="0.5">
+                </div>
+                <div class="form-group">
+                    <label>Update Status</label>
+                    <select id="updateTaskStatus">
+                        <option value="TODO">To Do</option>
+                        <option value="IN_PROGRESS">In Progress</option>
+                        <option value="BLOCKED">Blocked</option>
+                        <option value="DONE">Done</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-success">Update Task</button>
+                <button type="button" class="btn btn-secondary" onclick="closeUpdateHoursModal()">Cancel</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000/api';
+        let authToken = null;
+        let currentUser = null;
+        let allEmployees = [];
+        let autoRefreshInterval = null;
+        let lastUpdated = null;
+
+        // Toast Notification System
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 1.5em;">${type === 'success' ? '✓' : type === 'error' ? '✗' : '⚠'}</span>
+                    <span>${message}</span>
+                </div>
+            `;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.animation = 'slideOut 0.3s ease-out';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Loading Indicator
+        function showLoading(elementId) {
+            const el = document.getElementById(elementId);
+            if (el) {
+                el.innerHTML = '<div class="loading-spinner"></div><p style="text-align: center; color: #666;">Loading...</p>';
+            }
+        }
+
+        // Update Last Refreshed Time
+        function updateLastRefreshed() {
+            lastUpdated = new Date();
+            const timeStr = lastUpdated.toLocaleTimeString();
+            const indicators = document.querySelectorAll('.last-updated');
+            indicators.forEach(el => {
+                el.textContent = `Last updated: ${timeStr}`;
+            });
+        }
+
+        // Auto-refresh Dashboard
+        function startAutoRefresh() {
+            if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+
+            autoRefreshInterval = setInterval(() => {
+                if (currentUser) {
+                    if (currentUser.role === 'PROJECT_MANAGER') {
+                        loadManagerDashboard(true);
+                    } else {
+                        loadEmployeeDashboard(true);
+                    }
+                }
+            }, 30000); // Refresh every 30 seconds
+        }
+
+        function stopAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+            }
+        }
+
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+        }
+
+        function showError(elementId, message) {
+            const el = document.getElementById(elementId);
+            el.innerHTML = `<div class="alert alert-error">${message}</div>`;
+            setTimeout(() => el.innerHTML = '', 5000);
+        }
+
+        function showSuccess(elementId, message) {
+            const el = document.getElementById(elementId);
+            el.innerHTML = `<div class="alert alert-success">${message}</div>`;
+            setTimeout(() => el.innerHTML = '', 3000);
+        }
+
+        async function apiCall(endpoint, method = 'GET', body = null) {
+            const headers = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            };
+
+            const options = { method, headers };
+            if (body) options.body = JSON.stringify(body);
+
+            const response = await fetch(`${API_BASE}${endpoint}`, options);
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(JSON.stringify(data));
+            }
+
+            return data;
+        }
+
+        // Login
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+
+            try {
+                const response = await fetch(`${API_BASE}/login/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    authToken = data.access;
+                    currentUser = data.user;
+                    localStorage.setItem('authToken', authToken);
+                    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+
+                    showToast(`Welcome back, ${currentUser.username}!`, 'success');
+                    startAutoRefresh();
+
+                    if (currentUser.role === 'PROJECT_MANAGER') {
+                        loadManagerDashboard();
+                    } else {
+                        loadEmployeeDashboard();
+                    }
+                } else {
+                    showError('loginError', data.error || 'Login failed');
+                    showToast(data.error || 'Login failed', 'error');
+                }
+            } catch (error) {
+                showError('loginError', 'Connection error. Make sure server is running at http://localhost:8000');
+            }
+        });
+
+        // Register
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('regUsername').value;
+            const email = document.getElementById('regEmail').value;
+            const password = document.getElementById('regPassword').value;
+            const role = document.getElementById('regRole').value;
+
+            try {
+                const response = await fetch(`${API_BASE}/register/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, email, password, role })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showSuccess('registerError', 'Account created! Redirecting to login...');
+                    setTimeout(() => showPage('loginPage'), 2000);
+                } else {
+                    showError('registerError', JSON.stringify(data));
+                }
+            } catch (error) {
+                showError('registerError', 'Connection error. Make sure server is running.');
+            }
+        });
+
+        // Load Profile
+        async function loadProfile() {
+            showPage('profilePage');
+            document.getElementById('profileNavName').textContent = currentUser.username;
+
+            try {
+                const data = await apiCall('/profile/');
+
+                document.getElementById('profileUsername').value = data.username;
+                document.getElementById('profileEmail').value = data.email || '';
+                document.getElementById('profileFirstName').value = data.first_name || '';
+                document.getElementById('profileLastName').value = data.last_name || '';
+                document.getElementById('profileRole').value = data.role === 'PROJECT_MANAGER' ? 'Project Manager' : 'Employee';
+
+                document.getElementById('profileAvatar').textContent = data.username.charAt(0).toUpperCase();
+
+                // Load performance score
+                const perfData = await apiCall('/performance-score/');
+                document.getElementById('profilePerformance').innerHTML = `
+                    <div class="score ${getScoreClass(perfData.performance_score)}">${perfData.performance_score}</div>
+                    <p style="text-align: center; color: #666;">Your Performance Score</p>
+                `;
+            } catch (error) {
+                showError('profileError', 'Failed to load profile');
+                console.error(error);
+            }
+        }
+
+        // Update Profile
+        document.getElementById('profileForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const profileData = {
+                email: document.getElementById('profileEmail').value,
+                first_name: document.getElementById('profileFirstName').value,
+                last_name: document.getElementById('profileLastName').value,
+            };
+
+            try {
+                await apiCall('/profile/', 'PUT', profileData);
+                showSuccess('profileError', 'Profile updated successfully!');
+            } catch (error) {
+                showError('profileError', 'Failed to update profile');
+            }
+        });
+
+        // Load Manager Dashboard
+        async function loadManagerDashboard(silent = false) {
+            if (!silent) {
+                showPage('managerDashboard');
+            }
+            document.getElementById('managerName').textContent = currentUser.username;
+
+            if (!silent) {
+                document.getElementById('managerProjects').innerHTML = '<h3 style="margin: 30px 0 20px; color: #333;">Your Projects <span class="refresh-indicator">●</span></h3><div class="last-updated">Loading...</div>';
+                document.getElementById('overloadedEmployees').innerHTML = '<h3 style="margin: 30px 0 20px; color: #333;">Overloaded Employees</h3>';
+            }
+
+            try {
+                const data = await apiCall('/manager/dashboard/');
+
+                document.getElementById('overallHealth').textContent = data.overall_health.toFixed(1);
+                document.getElementById('overallHealth').className = 'score ' + getScoreClass(data.overall_health);
+
+                document.getElementById('totalAlerts').textContent = data.total_risk_alerts;
+                document.getElementById('overloadedCount').textContent = data.overloaded_employees.length;
+
+                const projectsHtml = data.projects.map(p => `
+                    <div class="project-item">
+                        <div class="project-header">
+                            <div class="project-name">${p.name}</div>
+                            <div class="health-score ${getScoreClass(p.health_score)}">${p.health_score.toFixed(1)}</div>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Risk Score</span>
+                            <span class="stat-value">${p.risk_score.toFixed(1)}/100</span>
+                        </div>
+                        ${p.sprints.length > 0 ? `
+                            <div style="margin-top: 15px;">
+                                <strong>Sprints:</strong>
+                                ${p.sprints.map(s => `
+                                    <div class="stat">
+                                        <span class="stat-label">Sprint ${s.sprint_number}</span>
+                                        <span class="stat-value">${s.completion_probability.toFixed(1)}% completion</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                        ${p.active_alerts.length > 0 ? `
+                            <div class="alert-list">
+                                <strong>Active Alerts:</strong>
+                                ${p.active_alerts.slice(0, 3).map(a => `
+                                    <div class="alert-item ${a.severity === 'CRITICAL' ? 'critical' : ''}">
+                                        <span class="badge badge-${a.severity === 'CRITICAL' ? 'danger' : 'warning'}">${a.severity}</span>
+                                        ${a.message}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                `).join('');
+
+                document.getElementById('managerProjects').innerHTML += projectsHtml;
+                updateLastRefreshed();
+
+                if (data.overloaded_employees.length > 0) {
+                    const overloadHtml = `
+                        <div class="card">
+                            ${data.overloaded_employees.map(e => `
+                                <div class="stat">
+                                    <span class="stat-label">${e.username}</span>
+                                    <span class="stat-value">
+                                        ${e.active_tasks} tasks
+                                        <span class="badge badge-${e.overload_level === 'CRITICAL' ? 'danger' : 'warning'}">${e.overload_level}</span>
+                                    </span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                    document.getElementById('overloadedEmployees').innerHTML += overloadHtml;
+                }
+
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+                if (!silent) {
+                    showToast('Failed to load dashboard data', 'error');
+                }
+            }
+        }
+
+        // Load Employee Dashboard
+        async function loadEmployeeDashboard(silent = false) {
+            if (!silent) {
+                showPage('employeeDashboard');
+            }
+            document.getElementById('employeeName').textContent = currentUser.username;
+
+            if (!silent) {
+                document.getElementById('employeeTasks').innerHTML = '<h3 style="margin: 30px 0 20px; color: #333;">My Active Tasks <span class="refresh-indicator">●</span></h3><div class="last-updated">Loading...</div>';
+                document.getElementById('employeeSprints').innerHTML = '<h3 style="margin: 30px 0 20px; color: #333;">Current Sprints</h3>';
+            }
+
+            try {
+                const data = await apiCall('/employee/dashboard/');
+
+                document.getElementById('performanceScore').textContent = data.performance_score.toFixed(1);
+                document.getElementById('performanceScore').className = 'score ' + getScoreClass(data.performance_score);
+
+                const statusEl = document.getElementById('workloadStatus');
+                statusEl.textContent = data.workload_status;
+                statusEl.className = 'badge badge-' + getWorkloadBadge(data.workload_status);
+                statusEl.style.display = 'inline-block';
+                statusEl.style.fontSize = '1.5em';
+                statusEl.style.marginTop = '20px';
+
+                document.getElementById('activeTasks').textContent = data.active_tasks_count;
+                document.getElementById('completedTasks').textContent = data.completed_tasks_count;
+
+                document.getElementById('todoCount').textContent = data.task_breakdown.TODO;
+                document.getElementById('inProgressCount').textContent = data.task_breakdown.IN_PROGRESS;
+                document.getElementById('blockedCount').textContent = data.task_breakdown.BLOCKED;
+                document.getElementById('doneCount').textContent = data.task_breakdown.DONE;
+
+                const tasksHtml = data.assigned_tasks.map(t => `
+                    <div class="task-item" onclick="openUpdateHoursModal(${t.id}, '${t.title}', ${t.actual_hours}, '${t.status}')">
+                        <div class="task-title">${t.title}</div>
+                        <div class="task-meta">
+                            <span class="badge badge-${getStatusBadge(t.status)}">${t.status}</span>
+                            <span class="badge badge-${getPriorityBadge(t.priority)}">${t.priority}</span>
+                            <span style="margin-left: 10px;">Est: ${t.estimated_hours}h | Actual: ${t.actual_hours}h</span>
+                        </div>
+                    </div>
+                `).join('');
+
+                document.getElementById('employeeTasks').innerHTML += tasksHtml || '<p>No active tasks</p>';
+                updateLastRefreshed();
+
+                if (data.current_sprints.length > 0) {
+                    const sprintsHtml = data.current_sprints.map(s => `
+                        <div class="card">
+                            <h3>${s.project_name} - Sprint ${s.sprint_number}</h3>
+                            <div class="stat">
+                                <span class="stat-label">End Date</span>
+                                <span class="stat-value">${s.end_date}</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-label">Completion Probability</span>
+                                <span class="stat-value">${s.completion_probability}%</span>
+                            </div>
+                        </div>
+                    `).join('');
+                    document.getElementById('employeeSprints').innerHTML += sprintsHtml;
+                }
+
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+            }
+        }
+
+        // Load Project Management
+        async function loadProjectManagement() {
+            showPage('projectManagementPage');
+
+            try {
+                const projects = await apiCall('/projects/');
+
+                const projectsHtml = projects.map(p => `
+                    <div class="card" style="margin-bottom: 20px;">
+                        <div class="project-header">
+                            <h3>${p.name}</h3>
+                            <button class="btn btn-danger btn-small" onclick="detectRisks(${p.id})">Scan Risks</button>
+                        </div>
+                        <p style="color: #666; margin-bottom: 15px;">${p.description || 'No description'}</p>
+                        <div class="stat">
+                            <span class="stat-label">Start Date</span>
+                            <span class="stat-value">${p.start_date}</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">End Date</span>
+                            <span class="stat-value">${p.end_date}</span>
+                        </div>
+                        <div class="action-buttons">
+                            <button class="btn btn-success btn-small" onclick="showCreateSprintModalForProject(${p.id})">+ Add Sprint</button>
+                            <button class="btn btn-success btn-small" onclick="showCreateTaskModalForProject(${p.id})">+ Add Task</button>
+                        </div>
+                    </div>
+                `).join('');
+
+                document.getElementById('projectsList').innerHTML = projectsHtml || '<p>No projects found. Create your first project!</p>';
+            } catch (error) {
+                console.error('Error loading projects:', error);
+            }
+        }
+
+        // Load My Tasks (Employee)
+        async function loadMyTasks() {
+            showPage('myTasksPage');
+
+            try {
+                const tasks = await apiCall('/tasks/');
+                const statusFilter = document.getElementById('taskStatusFilter').value;
+                const priorityFilter = document.getElementById('taskPriorityFilter').value;
+
+                const filteredTasks = tasks.filter(t => {
+                    return (!statusFilter || t.status === statusFilter) &&
+                        (!priorityFilter || t.priority === priorityFilter);
+                });
+
+                const tasksHtml = filteredTasks.map(t => `
+                    <div class="card" style="margin-bottom: 15px; cursor: pointer;" onclick="openUpdateHoursModal(${t.id}, '${t.title}', ${t.actual_hours}, '${t.status}')">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+                            <div>
+                                <h3>${t.title}</h3>
+                                <p style="color: #666; margin-top: 5px;">${t.description || 'No description'}</p>
+                            </div>
+                            <div>
+                                <span class="badge badge-${getStatusBadge(t.status)}">${t.status}</span>
+                                <span class="badge badge-${getPriorityBadge(t.priority)}">${t.priority}</span>
+                            </div>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Estimated Hours</span>
+                            <span class="stat-value">${t.estimated_hours}h</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Actual Hours</span>
+                            <span class="stat-value">${t.actual_hours}h</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Project</span>
+                            <span class="stat-value">Project #${t.project}</span>
+                        </div>
+                    </div>
+                `).join('');
+
+                document.getElementById('myTasksList').innerHTML = tasksHtml || '<p>No tasks found.</p>';
+            } catch (error) {
+                console.error('Error loading tasks:', error);
+            }
+        }
+
+        // Load Team Analytics
+        async function loadTeamAnalytics() {
+            showPage('teamAnalyticsPage');
+
+            try {
+                const dashboard = await apiCall('/manager/dashboard/');
+
+                let analyticsHtml = `
+                    <div class="card">
+                        <h3>Team Performance Overview</h3>
+                        <div class="stat">
+                            <span class="stat-label">Total Projects</span>
+                            <span class="stat-value">${dashboard.projects.length}</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Overall Health Score</span>
+                            <span class="stat-value ${getScoreClass(dashboard.overall_health)}">${dashboard.overall_health.toFixed(1)}</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Active Risk Alerts</span>
+                            <span class="stat-value">${dashboard.total_risk_alerts}</span>
+                        </div>
+                    </div>
+
+                    <div class="card" style="margin-top: 20px;">
+                        <h3>Team Members</h3>
+                        ${dashboard.overloaded_employees.length > 0 ? `
+                            <h4 style="color: #f59e0b; margin: 15px 0;">⚠️ Overloaded Employees</h4>
+                            ${dashboard.overloaded_employees.map(e => `
+                                <div class="stat">
+                                    <span class="stat-label">${e.username}</span>
+                                    <span class="stat-value">
+                                        ${e.active_tasks} tasks
+                                        <span class="badge badge-${e.overload_level === 'CRITICAL' ? 'danger' : 'warning'}">${e.overload_level}</span>
+                                    </span>
+                                </div>
+                            `).join('')}
+                        ` : '<p style="color: #10b981;">✓ No overloaded employees</p>'}
+                    </div>
+
+                    <div class="card" style="margin-top: 20px;">
+                        <h3>Project Health</h3>
+                        ${dashboard.projects.map(p => `
+                            <div class="stat">
+                                <span class="stat-label">${p.name}</span>
+                                <span class="stat-value ${getScoreClass(p.health_score)}">${p.health_score.toFixed(1)}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+
+                document.getElementById('teamAnalyticsContent').innerHTML = analyticsHtml;
+            } catch (error) {
+                console.error('Error loading analytics:', error);
+            }
+        }
+
+        // Detect Project Risks
+        async function detectRisks(projectId) {
+            try {
+                const data = await apiCall(`/projects/${projectId}/detect-risks/`, 'POST');
+                alert(`Risk scan complete! Found ${data.new_alerts.length} new alerts.`);
+                loadManagerDashboard();
+            } catch (error) {
+                alert('Failed to detect risks');
+                console.error(error);
+            }
+        }
+
+        // Create Project Modal
+        function showCreateProjectModal() {
+            document.getElementById('createProjectModal').classList.add('active');
+        }
+
+        function closeCreateProjectModal() {
+            document.getElementById('createProjectModal').classList.remove('active');
+            document.getElementById('createProjectForm').reset();
+        }
+
+        document.getElementById('createProjectForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const projectData = {
+                name: document.getElementById('newProjectName').value,
+                description: document.getElementById('newProjectDescription').value,
+                start_date: document.getElementById('newProjectStartDate').value,
+                end_date: document.getElementById('newProjectEndDate').value,
+            };
+
+            try {
+                await apiCall('/projects/', 'POST', projectData);
+                showSuccess('createProjectError', 'Project created successfully!');
+                setTimeout(() => {
+                    closeCreateProjectModal();
+                    loadProjectManagement();
+                }, 1500);
+            } catch (error) {
+                showError('createProjectError', 'Failed to create project');
+            }
+        });
+
+        // Create Sprint Modal
+        function showCreateSprintModalForProject(projectId) {
+            document.getElementById('sprintProjectId').value = projectId;
+            document.getElementById('createSprintModal').classList.add('active');
+        }
+
+        function closeCreateSprintModal() {
+            document.getElementById('createSprintModal').classList.remove('active');
+            document.getElementById('createSprintForm').reset();
+        }
+
+        document.getElementById('createSprintForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const sprintData = {
+                project: document.getElementById('sprintProjectId').value,
+                sprint_number: document.getElementById('newSprintNumber').value,
+                start_date: document.getElementById('newSprintStartDate').value,
+                end_date: document.getElementById('newSprintEndDate').value,
+            };
+
+            try {
+                await apiCall('/sprints/', 'POST', sprintData);
+                showSuccess('createSprintError', 'Sprint created successfully!');
+                setTimeout(() => {
+                    closeCreateSprintModal();
+                    loadProjectManagement();
+                }, 1500);
+            } catch (error) {
+                showError('createSprintError', 'Failed to create sprint');
+            }
+        });
+
+        // Create Task Modal
+        async function showCreateTaskModalForProject(projectId) {
+            document.getElementById('taskProjectId').value = projectId;
+
+            // Load employees for assignment
+            try {
+                // You'll need to create an endpoint to list all users or filter by role
+                // For now, we'll use a simplified approach
+                const assigneeSelect = document.getElementById('newTaskAssignee');
+                assigneeSelect.innerHTML = '<option value="">Unassigned</option>';
+
+                // Load sprints for this project
+                const sprints = await apiCall('/sprints/');
+                const projectSprints = sprints.filter(s => s.project == projectId);
+                const sprintSelect = document.getElementById('newTaskSprint');
+                sprintSelect.innerHTML = '<option value="">No Sprint</option>';
+                projectSprints.forEach(s => {
+                    sprintSelect.innerHTML += `<option value="${s.id}">Sprint ${s.sprint_number}</option>`;
+                });
+
+                document.getElementById('createTaskModal').classList.add('active');
+            } catch (error) {
+                console.error('Error loading task form data:', error);
+            }
+        }
+
+        function closeCreateTaskModal() {
+            document.getElementById('createTaskModal').classList.remove('active');
+            document.getElementById('createTaskForm').reset();
+        }
+
+        document.getElementById('createTaskForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const taskData = {
+                title: document.getElementById('newTaskTitle').value,
+                description: document.getElementById('newTaskDescription').value,
+                project: document.getElementById('taskProjectId').value,
+                priority: document.getElementById('newTaskPriority').value,
+                estimated_hours: document.getElementById('newTaskEstimatedHours').value,
+                sprint: document.getElementById('newTaskSprint').value || null,
+                assigned_to: document.getElementById('newTaskAssignee').value || null,
+            };
+
+            try {
+                await apiCall('/tasks/', 'POST', taskData);
+                showSuccess('createTaskError', 'Task created successfully!');
+                setTimeout(() => {
+                    closeCreateTaskModal();
+                    loadProjectManagement();
+                }, 1500);
+            } catch (error) {
+                showError('createTaskError', 'Failed to create task');
+            }
+        });
+
+        // Update Hours Modal
+        function openUpdateHoursModal(taskId, taskTitle, actualHours, status) {
+            document.getElementById('updateHoursTaskId').value = taskId;
+            document.getElementById('updateHoursTaskTitle').textContent = taskTitle;
+            document.getElementById('updateActualHours').value = actualHours;
+            document.getElementById('updateTaskStatus').value = status;
+            document.getElementById('updateHoursModal').classList.add('active');
+        }
+
+        function closeUpdateHoursModal() {
+            document.getElementById('updateHoursModal').classList.remove('active');
+            document.getElementById('updateHoursForm').reset();
+        }
+
+        document.getElementById('updateHoursForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const taskId = document.getElementById('updateHoursTaskId').value;
+            const actualHours = document.getElementById('updateActualHours').value;
+            const status = document.getElementById('updateTaskStatus').value;
+
+            try {
+                // Update hours
+                await apiCall(`/tasks/${taskId}/update_hours/`, 'POST', { actual_hours: actualHours });
+
+                // Update status
+                await apiCall(`/tasks/${taskId}/`, 'PATCH', { status: status });
+
+                showSuccess('updateHoursError', 'Task updated successfully!');
+                setTimeout(() => {
+                    closeUpdateHoursModal();
+                    if (currentUser.role === 'EMPLOYEE') {
+                        loadMyTasks();
+                        loadEmployeeDashboard();
+                    }
+                }, 1500);
+            } catch (error) {
+                showError('updateHoursError', 'Failed to update task');
+            }
+        });
+
+        // Utility Functions
+        function getScoreClass(score) {
+            if (score >= 70) return 'good';
+            if (score >= 40) return 'warning';
+            return 'danger';
+        }
+
+        function getWorkloadBadge(status) {
+            const map = {
+                'NORMAL': 'success',
+                'ELEVATED': 'info',
+                'HIGH': 'warning',
+                'CRITICAL': 'danger'
+            };
+            return map[status] || 'info';
+        }
+
+        function getStatusBadge(status) {
+            const map = {
+                'TODO': 'info',
+                'IN_PROGRESS': 'warning',
+                'BLOCKED': 'danger',
+                'DONE': 'success'
+            };
+            return map[status] || 'info';
+        }
+
+        function getPriorityBadge(priority) {
+            const map = {
+                'LOW': 'info',
+                'MEDIUM': 'warning',
+                'HIGH': 'danger',
+                'CRITICAL': 'danger'
+            };
+            return map[priority] || 'info';
+        }
+
+        function backToDashboard() {
+            if (currentUser.role === 'PROJECT_MANAGER') {
+                loadManagerDashboard();
+            } else {
+                loadEmployeeDashboard();
+            }
+        }
+
+        function logout() {
+            stopAutoRefresh();
+            authToken = null;
+            currentUser = null;
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('currentUser');
+            showToast('Logged out successfully', 'success');
+            showPage('loginPage');
+        }
+
+        // Initialize on load
+        window.onload = () => {
+            const savedToken = localStorage.getItem('authToken');
+            const savedUser = localStorage.getItem('currentUser');
+
+            if (savedToken && savedUser) {
+                authToken = savedToken;
+                currentUser = JSON.parse(savedUser);
+                startAutoRefresh();
+
+                if (currentUser.role === 'PROJECT_MANAGER') {
+                    loadManagerDashboard();
+                } else {
+                    loadEmployeeDashboard();
+                }
+            }
+        };
+    </script>
+</body>
+
+</html>
