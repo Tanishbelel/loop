@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from .models import Project, Sprint, Task, CommitLog, RiskAlert, ScrumMeeting
+from .models import Team, Phase, MicroTask
 
 User = get_user_model()
 
@@ -119,3 +120,82 @@ class ScrumMeetingSerializer(serializers.ModelSerializer):
     def get_participant_names(self, obj):
         return [p.username for p in obj.participants.all()]
 
+class TeamSerializer(serializers.ModelSerializer):
+    project_name = serializers.CharField(source="project.name", read_only=True)
+    member_names = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Team
+        fields = [
+            "id",
+            "name",
+            "project",
+            "project_name",
+            "members",
+            "member_names",
+            "created_at",
+        ]
+        read_only_fields = ["created_at"]
+
+    def get_member_names(self, obj):
+        return [u.username for u in obj.members.all()]
+
+class PhaseSerializer(serializers.ModelSerializer):
+    project_name = serializers.CharField(source="project.name", read_only=True)
+
+    class Meta:
+        model = Phase
+        fields = [
+            "id",
+            "project",
+            "project_name",
+            "name",
+            "description",
+            "phase_order",
+            "start_date",
+            "end_date",
+            "created_at",
+        ]
+        read_only_fields = ["created_at"]
+
+    def validate(self, data):
+        if data["end_date"] < data["start_date"]:
+            raise serializers.ValidationError("End date must be after start date")
+        return data
+
+class MicroTaskSerializer(serializers.ModelSerializer):
+    task_title = serializers.CharField(source="task.title", read_only=True)
+    developer_name = serializers.CharField(source="developer.username", read_only=True)
+    team_name = serializers.CharField(source="task.team.name", read_only=True)
+
+    class Meta:
+        model = MicroTask
+        fields = [
+            "id",
+            "task",
+            "task_title",
+            "title",
+            "description",
+            "developer",
+            "developer_name",
+            "team_name",
+            "status",
+            "estimated_minutes",
+            "actual_minutes",
+            "order",
+            "created_at",
+            "last_updated",
+        ]
+        read_only_fields = ["created_at", "last_updated"]
+
+    def validate(self, data):
+        task = data.get("task") or self.instance.task
+        dev = data.get("developer")
+
+        if dev and task and task.team:
+            if dev not in task.team.members.all():
+                raise serializers.ValidationError(
+                    "Developer must belong to task team"
+                )
+
+        return data

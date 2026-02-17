@@ -5,7 +5,8 @@ from .views import (
     register, login, profile, manager_dashboard, employee_dashboard,
     detect_project_risks, performance_score,
     list_employees, assign_task,
-    meetings_list, meeting_detail, join_meeting, start_meeting, complete_meeting, generate_meeting_summary
+    meetings_list, meeting_detail, join_meeting, start_meeting, complete_meeting, generate_meeting_summary, TeamViewSet,
+    PhaseViewSet, MicroTaskViewSet
 )
 
 router = DefaultRouter()
@@ -14,6 +15,10 @@ router.register(r'sprints', SprintViewSet, basename='sprint')
 router.register(r'tasks', TaskViewSet, basename='task')
 router.register(r'commits', CommitLogViewSet, basename='commit')
 router.register(r'alerts', RiskAlertViewSet, basename='alert')
+
+router.register("teams", TeamViewSet, basename="team")
+router.register("phases", PhaseViewSet, basename="phase")
+router.register("microtasks", MicroTaskViewSet, basename="microtask")
 
 urlpatterns = [
     path('', include(router.urls)),

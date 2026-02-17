@@ -5,11 +5,11 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate, get_user_model
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404
-from .models import Project, Sprint, Task, CommitLog, RiskAlert, ScrumMeeting
+from .models import Project, Sprint, Task, CommitLog, RiskAlert, ScrumMeeting, Team, Phase, MicroTask
 from .serializers import (
     UserSerializer, UserProfileSerializer, ProjectSerializer,
     SprintSerializer, TaskSerializer, CommitLogSerializer, RiskAlertSerializer,
-    ScrumMeetingSerializer
+    ScrumMeetingSerializer,TeamSerializer, PhaseSerializer, MicroTaskSerializer
 )
 from .permissions import IsProjectManager, IsOwnerOrProjectManager
 from .services import ProjectIntelligenceService
@@ -157,6 +157,56 @@ class RiskAlertViewSet(viewsets.ModelViewSet):
         alert.is_resolved = True
         alert.save()
         return Response({'status': 'resolved'})
+
+class TeamViewSet(viewsets.ModelViewSet):
+    queryset = Team.objects.prefetch_related("members").all()
+    serializer_class = TeamSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        project_id = self.request.query_params.get("project")
+        if project_id:
+            qs = qs.filter(project_id=project_id)
+        return qs
+
+class PhaseViewSet(viewsets.ModelViewSet):
+    queryset = Phase.objects.select_related("project").all()
+    serializer_class = PhaseSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        project_id = self.request.query_params.get("project")
+        if project_id:
+            qs = qs.filter(project_id=project_id)
+        return qs
+
+class MicroTaskViewSet(viewsets.ModelViewSet):
+    queryset = MicroTask.objects.select_related(
+        "task",
+        "developer",
+        "task__team"
+    ).all()
+
+    serializer_class = MicroTaskSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+
+        task_id = self.request.query_params.get("task")
+        dev_id = self.request.query_params.get("developer")
+        team_id = self.request.query_params.get("team")
+
+        if task_id:
+            qs = qs.filter(task_id=task_id)
+        if dev_id:
+            qs = qs.filter(developer_id=dev_id)
+        if team_id:
+            qs = qs.filter(task__team_id=team_id)
+
+        return qs
 
 @api_view(['GET'])
 @permission_classes([IsProjectManager])
