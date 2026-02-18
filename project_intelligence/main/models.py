@@ -228,3 +228,14 @@ class ScrumMeeting(models.Model):
 
     def __str__(self):
         return f"{self.title} - {self.get_meeting_type_display()}"
+
+class GithubInstallation(models.Model):
+    org_name = models.CharField(max_length=255)
+    installation_id = models.CharField(max_length=255)
+    installed_at = models.DateTimeField(auto_now_add=True)
+
+class PendingRepoDeletion(models.Model):
+    repo_name = models.CharField(max_length=255)
+    owner = models.CharField(max_length=255)
+    requested_at = models.DateTimeField(auto_now_add=True)
+    confirmed = models.BooleanField(default=False)

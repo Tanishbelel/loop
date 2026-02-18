@@ -6,7 +6,7 @@ from .views import (
     detect_project_risks, performance_score,
     list_employees, assign_task,
     meetings_list, meeting_detail, join_meeting, start_meeting, complete_meeting, generate_meeting_summary, TeamViewSet,
-    PhaseViewSet, MicroTaskViewSet
+    PhaseViewSet, MicroTaskViewSet, GithubViews
 )
 
 router = DefaultRouter()
@@ -29,13 +29,13 @@ urlpatterns = [
     path('employee/dashboard/', employee_dashboard, name='employee-dashboard'),
     path('projects/<int:project_id>/detect-risks/', detect_project_risks, name='detect-risks'),
     path('performance-score/', performance_score, name='performance-score'),
-    
+
     # Employee Management
     path('employees/', list_employees, name='list-employees'),
-    
+
     # Task Assignment
     path('tasks/<int:task_id>/assign/', assign_task, name='assign-task'),
-    
+
     # Scrum Meetings
     path('meetings/', meetings_list, name='meetings-list'),
     path('meetings/<int:meeting_id>/', meeting_detail, name='meeting-detail'),
@@ -43,5 +43,19 @@ urlpatterns = [
     path('meetings/<int:meeting_id>/start/', start_meeting, name='start-meeting'),
     path('meetings/<int:meeting_id>/complete/', complete_meeting, name='complete-meeting'),
     path('meetings/<int:meeting_id>/generate-summary/', generate_meeting_summary, name='generate-summary'),
-]
 
+    # GitHub App installation webhook
+    path("github/app-events/", GithubViews.github_app_events),
+
+    # Create repo for a project
+    path("github/create-repo/", GithubViews.create_repo),
+
+    # List repos
+    path("github/list-repos/", GithubViews.list_repos),
+
+    # GitHub repo webhook listener
+    path("github/webhook/", GithubViews.github_repo_webhook),
+
+    path("github/safe-delete/", GithubViews.safe_delete_repo),
+    path("github/confirm-delete/", GithubViews.confirm_delete_repo),
+]

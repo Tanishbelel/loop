@@ -14,3 +14,4 @@ env/
 *.swo
 staticfiles/
 media/
+github-app-private-key.pem
