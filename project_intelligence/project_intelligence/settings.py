@@ -6,7 +6,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-dev-key-change-in-production-987654321'
 
 # Get a free key at: https://aistudio.google.com/app/apikey
-GEMINI_API_KEY = 'AIzaSyBcu2tJ8if_aOnrX44mykAujL5gDHmMvvI'
+GEMINI_API_KEY = 'gemini-api-key-placeholder'
 
 DEBUG = True
 
