@@ -4,9 +4,14 @@ from .views import (
     ProjectViewSet, SprintViewSet, TaskViewSet, CommitLogViewSet, RiskAlertViewSet,
     register, login, profile, manager_dashboard, employee_dashboard,
     detect_project_risks, performance_score,
-    list_employees, assign_task,
+    list_employees,
     meetings_list, meeting_detail, join_meeting, start_meeting, complete_meeting, generate_meeting_summary, TeamViewSet,
-    PhaseViewSet, MicroTaskViewSet, GithubViews
+    PhaseViewSet, MicroTaskViewSet, GithubViews, ManagerDashboardAnalytics,
+    ProjectAnalytics,
+    PhaseAnalytics,
+    SprintAnalytics,
+    TaskAnalytics,
+    EmployeePerformanceAnalytics
 )
 
 router = DefaultRouter()
@@ -33,8 +38,26 @@ urlpatterns = [
     # Employee Management
     path('employees/', list_employees, name='list-employees'),
 
+    # Manager dashboard
+    path("analytics/manager/", ManagerDashboardAnalytics.as_view()),
+
+    # Project analytics
+    path("analytics/project/<int:project_id>/", ProjectAnalytics.as_view()),
+
+    # Phase analytics
+    path("analytics/phase/<int:phase_id>/", PhaseAnalytics.as_view()),
+
+    # Sprint analytics
+    path("analytics/sprint/<int:sprint_id>/", SprintAnalytics.as_view()),
+
+    # Task analytics
+    path("analytics/task/<int:task_id>/", TaskAnalytics.as_view()),
+
+    # Employee performance
+    path("analytics/employee/<int:user_id>/", EmployeePerformanceAnalytics.as_view()),
+
     # Task Assignment
-    path('tasks/<int:task_id>/assign/', assign_task, name='assign-task'),
+    # path('tasks/<int:task_id>/assign/', assign_task, name='assign-task'),
 
     # Scrum Meetings
     path('meetings/', meetings_list, name='meetings-list'),

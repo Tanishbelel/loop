@@ -1,3 +1,4 @@
+from django.utils import timezone
 from django.utils.decorators import method_decorator
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import api_view, permission_classes, action
@@ -23,6 +24,8 @@ import hashlib
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from dotenv import load_dotenv
+
+from .utils import AnalyticsUtils
 
 load_dotenv()
 
@@ -303,14 +306,54 @@ class GithubViews(APIView):
         return JsonResponse(repos, safe=False)
 
     # =========================================================
+    # 🔹 Helper: Find MicroTask From Commit Message
+    # =========================================================
+    @staticmethod
+    def find_microtask_from_commit(project, message):
+        msg = message.lower()
+
+        microtasks = MicroTask.objects.filter(
+            task__project=project,
+            status__in=["TODO", "IN_PROGRESS"]
+        )
+
+        for mt in microtasks:
+            if mt.title.lower() in msg:
+                return mt
+
+        return None
+
+    # =========================================================
+    # 🔹 Helper: Update Task Progress
+    # =========================================================
+    @staticmethod
+    def update_task_progress(task):
+        total = task.micro_tasks.count()
+        done = task.micro_tasks.filter(status="DONE").count()
+
+        if total == 0:
+            return
+
+        percent = done / total * 100
+
+        if percent == 100:
+            task.status = "DONE"
+        elif done > 0:
+            task.status = "IN_PROGRESS"
+
+        task.save()
+
+    # =========================================================
     # 4️⃣ Repo Webhook Listener
     # =========================================================
     @staticmethod
     @csrf_exempt
     def github_repo_webhook(request):
+
         if request.method != "POST":
             return HttpResponse(status=405)
 
+        # 🔐 Verify webhook signature
         secret = os.getenv("GITHUB_WEBHOOK_SECRET").encode()
         signature = request.headers.get("X-Hub-Signature-256")
 
@@ -320,15 +363,55 @@ class GithubViews(APIView):
             return HttpResponse("Invalid signature", status=401)
 
         payload = json.loads(request.body)
-        print(payload)
         event = request.headers.get("X-GitHub-Event")
 
         print("Event:", event)
 
+        # =====================================================
+        # PUSH EVENT → TRACK MICROTASKS
+        # =====================================================
         if event == "push":
-            print("Repo:", payload["repository"]["name"])
-            print("Commits:", len(payload["commits"]))
 
+            repo_name = payload["repository"]["name"]
+            print("Repo:", repo_name)
+
+            try:
+                project = Project.objects.get(name=repo_name)
+            except Project.DoesNotExist:
+                print("Project not mapped to repo")
+                return HttpResponse("Project not found", status=200)
+
+            for commit in payload.get("commits", []):
+
+                message = commit.get("message", "")
+                sha = commit.get("id")
+                author_email = commit.get("author", {}).get("email")
+
+                print("Checking commit:", message)
+
+                mt = GithubViews.find_microtask_from_commit(project, message)
+
+                if not mt:
+                    continue
+
+                # 🔹 Optional safety check
+                if mt.developer and mt.developer.email != author_email:
+                    print("Commit author mismatch → ignoring")
+                    continue
+
+                if mt.status != "DONE":
+                    mt.status = "DONE"
+                    mt.actual_minutes = mt.estimated_minutes
+                    mt.last_updated = timezone.now()
+                    mt.save()
+
+                    GithubViews.update_task_progress(mt.task)
+
+                    print(f"MicroTask DONE → {mt.title}")
+
+        # =====================================================
+        # PULL REQUEST EVENT
+        # =====================================================
         elif event == "pull_request":
             print("PR:", payload["pull_request"]["title"])
 
@@ -345,7 +428,7 @@ class GithubViews(APIView):
             install = GithubInstallation.objects.get(org_name=org_name)
             installation_id = install.installation_id
 
-            gh = GithubServices(org_name,installation_id)
+            gh = GithubServices(org_name, installation_id)
             gh.archive_repository(repo_name)
 
             PendingRepoDeletion.objects.create(
@@ -385,7 +468,7 @@ class GithubViews(APIView):
         install = GithubInstallation.objects.get(org_name=org_name)
         installation_id = install.installation_id
 
-        gh = GithubServices(org_name,installation_id)
+        gh = GithubServices(org_name, installation_id)
 
         gh.delete_repository(repo_name)
 
@@ -450,22 +533,22 @@ def list_employees(request):
 
 
 # Task Assignment
-@api_view(['POST'])
-@permission_classes([IsProjectManager])
-def assign_task(request, task_id):
-    """Assign task to employee"""
-    task = get_object_or_404(Task, id=task_id)
-    employee_id = request.data.get('employee_id')
-    employee = get_object_or_404(User, id=employee_id, role='EMPLOYEE')
-
-    task.assigned_to = employee
-    task.save()
-
-    return Response({
-        'status': 'success',
-        'message': f'Task assigned to {employee.username}',
-        'task': TaskSerializer(task).data
-    })
+# @api_view(['POST'])
+# @permission_classes([IsProjectManager])
+# def assign_task(request, task_id):
+#     """Assign task to employee"""
+#     task = get_object_or_404(Task, id=task_id)
+#     employee_id = request.data.get('employee_id')
+#     employee = get_object_or_404(User, id=employee_id, role='EMPLOYEE')
+#
+#     task.assigned_to = employee
+#     task.save()
+#
+#     return Response({
+#         'status': 'success',
+#         'message': f'Task assigned to {employee.username}',
+#         'task': TaskSerializer(task).data
+#     })
 
 
 # Scrum Meetings
@@ -593,3 +676,78 @@ def generate_meeting_summary(request, meeting_id):
         'action_items': action_items,
         'meeting': ScrumMeetingSerializer(meeting).data
     })
+
+class ManagerDashboardAnalytics(APIView):
+    def get(self, request):
+        manager = request.user
+        data = AnalyticsUtils.manager_dashboard(manager)
+        return Response(data)
+
+class ProjectAnalytics(APIView):
+    def get(self, request, project_id):
+        project = get_object_or_404(Project, id=project_id)
+
+        project_data = AnalyticsUtils.project_metrics(project)
+
+        phase_data = [
+            AnalyticsUtils.phase_metrics(p)
+            for p in project.phases.all()
+        ]
+
+        return Response({
+            "project": project_data,
+            "phases": phase_data
+        })
+
+class PhaseAnalytics(APIView):
+    def get(self, request, phase_id):
+        phase = get_object_or_404(Phase, id=phase_id)
+
+        phase_data = AnalyticsUtils.phase_metrics(phase)
+
+        sprint_data = [
+            AnalyticsUtils.sprint_metrics(s)
+            for s in phase.sprints.all()
+        ]
+
+        return Response({
+            "phase": phase_data,
+            "sprints": sprint_data
+        })
+
+class SprintAnalytics(APIView):
+    def get(self, request, sprint_id):
+        sprint = get_object_or_404(Sprint, id=sprint_id)
+
+        sprint_data = AnalyticsUtils.sprint_metrics(sprint)
+
+        task_data = [
+            {
+                "task": t.title,
+                "completion_percent": AnalyticsUtils.microtask_completion(t),
+                "total_microtasks": t.micro_tasks.count(),
+                "completed_microtasks": t.micro_tasks.filter(status="DONE").count()
+            }
+            for t in sprint.tasks.all()
+        ]
+
+        return Response({
+            "sprint": sprint_data,
+            "tasks": task_data
+        })
+
+class TaskAnalytics(APIView):
+    def get(self, request, task_id):
+        task = get_object_or_404(Task, id=task_id)
+
+        return Response({
+            "task": task.title,
+            "completion_percent": AnalyticsUtils.microtask_completion(task),
+            "total_microtasks": task.micro_tasks.count(),
+            "completed_microtasks": task.micro_tasks.filter(status="DONE").count()
+        })
+
+class EmployeePerformanceAnalytics(APIView):
+    def get(self, request, user_id):
+        data = AnalyticsUtils.employee_performance(user_id)
+        return Response(data)
