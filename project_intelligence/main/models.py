@@ -19,6 +19,12 @@ class Project(models.Model):
     end_date = models.DateField()
     manager = models.ForeignKey(User, on_delete=models.CASCADE, related_name='managed_projects')
     created_at = models.DateTimeField(auto_now_add=True)
+    # GitHub integration
+    github_repo_url = models.CharField(max_length=500, blank=True, default='')
+    github_token = models.CharField(max_length=255, blank=True, default='')
+    github_repo_owner = models.CharField(max_length=200, blank=True, default='')
+    github_repo_name = models.CharField(max_length=200, blank=True, default='')
+    last_commit_sync = models.DateTimeField(null=True, blank=True)
     
     def __str__(self):
         return self.name
@@ -69,8 +75,19 @@ class Task(models.Model):
         return f"{self.title} ({self.get_status_display()})"
 
 class CommitLog(models.Model):
-    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='commits')
+    task = models.ForeignKey(Task, on_delete=models.SET_NULL, null=True, blank=True, related_name='commits')
+    project = models.ForeignKey('Project', on_delete=models.CASCADE, related_name='commit_logs', null=True, blank=True)
     commit_message = models.TextField()
+    commit_sha = models.CharField(max_length=40, blank=True, default='')
+    commit_author = models.CharField(max_length=200, blank=True, default='')
+    commit_author_email = models.CharField(max_length=200, blank=True, default='')
+    branch = models.CharField(max_length=200, blank=True, default='main')
+    files_changed = models.IntegerField(default=0)
+    lines_added = models.IntegerField(default=0)
+    lines_deleted = models.IntegerField(default=0)
+    is_meaningful = models.BooleanField(default=True)
+    trivial_reason = models.CharField(max_length=200, blank=True, default='')
+    github_url = models.CharField(max_length=500, blank=True, default='')
     commit_time = models.DateTimeField(default=timezone.now)
     created_at = models.DateTimeField(auto_now_add=True)
     
@@ -78,7 +95,8 @@ class CommitLog(models.Model):
         ordering = ['-commit_time']
     
     def __str__(self):
-        return f"Commit for {self.task.title} at {self.commit_time}"
+        project_name = self.project.name if self.project else 'Unknown'
+        return f"Commit {self.commit_sha[:7] if self.commit_sha else ''} on {project_name} at {self.commit_time}"
 
 class RiskAlert(models.Model):
     SEVERITY_CHOICES = [
@@ -126,6 +144,7 @@ class ScrumMeeting(models.Model):
     participants = models.ManyToManyField(User, related_name='scrum_meetings', blank=True)
     agenda = models.TextField(blank=True)
     notes = models.TextField(blank=True)
+    transcript = models.TextField(blank=True)
     ai_summary = models.TextField(blank=True)
     action_items = models.JSONField(default=list, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

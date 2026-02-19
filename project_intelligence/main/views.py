@@ -6,13 +6,14 @@ from django.contrib.auth import authenticate, get_user_model
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404
 from .models import Project, Sprint, Task, CommitLog, RiskAlert, ScrumMeeting
+import re
 from .serializers import (
     UserSerializer, UserProfileSerializer, ProjectSerializer,
     SprintSerializer, TaskSerializer, CommitLogSerializer, RiskAlertSerializer,
     ScrumMeetingSerializer
 )
 from .permissions import IsProjectManager, IsOwnerOrProjectManager
-from .services import ProjectIntelligenceService
+from .services import ProjectIntelligenceService, GitHubService
 
 User = get_user_model()
 
@@ -311,35 +312,191 @@ def complete_meeting(request, meeting_id):
     })
 
 @api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def save_transcript(request, meeting_id):
+    """Save speech transcript from the meeting room"""
+    meeting = get_object_or_404(ScrumMeeting, id=meeting_id)
+    transcript = request.data.get('transcript', '')
+    meeting.transcript = transcript
+    meeting.save()
+    return Response({'status': 'success', 'message': 'Transcript saved'})
+
+
+def _generate_ai_summary_gemini(transcript, meeting, participants):
+    """
+    Use Google Gemini to generate an intelligent, structured meeting summary.
+    Falls back to basic extraction if the API key is not set or the call fails.
+    """
+    from django.conf import settings
+    import json as json_lib
+
+    api_key = getattr(settings, 'GEMINI_API_KEY', '')
+    if not api_key or api_key == 'YOUR_GEMINI_API_KEY_HERE':
+        return _fallback_summary(transcript, meeting, participants)
+
+    try:
+        from google import genai
+
+        client = genai.Client(api_key=api_key)
+
+        participant_list = ', '.join(participants) if participants else 'the team'
+        meeting_type = meeting.get_meeting_type_display()
+        agenda = meeting.agenda or 'Not specified'
+
+        prompt = f"""You are an expert meeting analyst. Analyze the following meeting transcript and produce a structured, insightful summary.
+
+Meeting Details:
+- Type: {meeting_type}
+- Participants: {participant_list}
+- Agenda: {agenda}
+
+Transcript:
+\"\"\"
+{transcript}
+\"\"\"
+
+Produce a JSON response with EXACTLY this structure (no markdown, raw JSON only):
+{{
+  "summary": "A concise 3-5 sentence executive summary of what was discussed, decided, and accomplished. Do NOT just repeat the transcript — synthesize and interpret it intelligently.",
+  "key_decisions": ["decision 1", "decision 2"],
+  "blockers": ["blocker 1", "blocker 2"],
+  "action_items": [
+    {{"item": "clear action description", "owner": "person name or Team", "priority": "HIGH|MEDIUM|LOW"}}
+  ]
+}}
+
+Rules:
+- summary must be analytical and insightful, NOT a repetition of words spoken
+- Extract real action items from what was said (things people committed to doing)
+- If the transcript is in Hindi or mixed language, still respond in English
+- If no blockers/decisions found, use empty arrays []
+- Limit action_items to max 5
+"""
+
+        # Single request — no retries (free tier has low RPM; retrying just burns quota)
+        response = client.models.generate_content(
+            model='gemini-2.0-flash-lite',
+            contents=prompt,
+        )
+
+        raw = response.text.strip()
+
+        # Strip markdown code fences if present
+        if raw.startswith('```'):
+            raw = re.sub(r'^```[a-z]*\n?', '', raw)
+            raw = re.sub(r'\n?```$', '', raw)
+
+        parsed = json_lib.loads(raw)
+        summary_text = parsed.get('summary', '')
+        action_items = parsed.get('action_items', [])
+
+        # Append key decisions and blockers to summary
+        decisions = parsed.get('key_decisions', [])
+        blockers = parsed.get('blockers', [])
+        if decisions:
+            summary_text += '\n\nKey Decisions: ' + '; '.join(decisions) + '.'
+        if blockers:
+            summary_text += '\n\nBlockers Identified: ' + '; '.join(blockers) + '.'
+
+        # Normalise action items
+        normalised = []
+        for item in action_items[:5]:
+            normalised.append({
+                'item': str(item.get('item', '')).strip(),
+                'owner': str(item.get('owner', 'Team')).strip(),
+                'priority': str(item.get('priority', 'MEDIUM')).upper(),
+            })
+
+        return summary_text, normalised
+
+    except Exception as e:
+        print(f'Gemini summary generation failed: {e}')
+        return _fallback_summary(transcript, meeting, participants)
+
+
+
+def _fallback_summary(transcript, meeting, participants):
+    """
+    Smart rule-based summary when Gemini is unavailable.
+    Extracts real sentences, detects blockers/decisions/commitments, names owners.
+    """
+    import re as _re
+
+    meeting_type = meeting.get_meeting_type_display()
+    participant_str = ', '.join(participants) if participants else 'the team'
+
+    if not transcript or len(transcript.strip()) < 20:
+        summary = (
+            f"A {meeting_type} was held with {participant_str}. "
+            f"No transcript was recorded."
+        )
+        return summary, [{'item': 'Review meeting notes', 'owner': participants[0] if participants else 'Team', 'priority': 'MEDIUM'}]
+
+    t = transcript.strip()
+    sentences = [s.strip() for s in _re.split(r'(?<=[.!?])\s+', t) if len(s.strip()) > 10]
+
+    # Pattern buckets
+    blocker_kw   = ['blocked', 'blocker', 'stuck', 'issue', 'problem', 'error', 'bug', 'delay', 'waiting', 'can\'t', 'cannot', 'not working']
+    decision_kw  = ['decided', 'agreed', 'will', 'going to', 'deadline', 'by friday', 'by tomorrow', 'by end of', 'approved', 'confirmed']
+    progress_kw  = ['completed', 'done', 'finished', 'deployed', 'merged', 'shipped', 'fixed', 'resolved', 'implemented']
+    action_kw    = ['will', 'need to', 'should', 'must', 'going to', 'assigned', 'take care', 'handle', 'follow up']
+
+    tl = t.lower()
+    blocker_sentences  = [s for s in sentences if any(k in s.lower() for k in blocker_kw)]
+    decision_sentences = [s for s in sentences if any(k in s.lower() for k in decision_kw)]
+    progress_sentences = [s for s in sentences if any(k in s.lower() for k in progress_kw)]
+
+    # Build summary paragraph
+    parts = []
+    parts.append(f"The {meeting_type} was attended by {participant_str}.")
+
+    if progress_sentences:
+        parts.append(f"Progress reported: {progress_sentences[0]}")
+    if decision_sentences:
+        parts.append(f"Key point: {decision_sentences[0]}")
+    if blocker_sentences:
+        parts.append(f"A blocker was raised: {blocker_sentences[0]}")
+    if not (progress_sentences or decision_sentences or blocker_sentences) and sentences:
+        parts.append(sentences[0])
+
+    summary = ' '.join(parts)
+
+    # Extract action items: sentences with action keywords, try to find owner
+    action_items = []
+    for s in sentences:
+        sl = s.lower()
+        if any(k in sl for k in action_kw):
+            owner = 'Team'
+            for p in participants:
+                if p.lower() in sl:
+                    owner = p
+                    break
+            priority = 'HIGH' if any(k in sl for k in ['urgent', 'asap', 'today', 'tomorrow', 'friday', 'deadline']) else 'MEDIUM'
+            action_items.append({'item': s[:120], 'owner': owner, 'priority': priority})
+            if len(action_items) >= 3:
+                break
+
+    if not action_items:
+        action_items = [{'item': 'Review meeting notes and follow up on discussed topics',
+                         'owner': participants[0] if participants else 'Team', 'priority': 'MEDIUM'}]
+
+    return summary, action_items
+
+
+
+@api_view(['POST'])
 @permission_classes([IsProjectManager])
 def generate_meeting_summary(request, meeting_id):
-    """Generate AI summary for completed meeting"""
+    """Generate AI summary for completed meeting using Gemini"""
     meeting = get_object_or_404(ScrumMeeting, id=meeting_id, organizer=request.user)
-    
-    # Generate AI summary
     participants = [p.username for p in meeting.participants.all()]
-    
-    # Simulate AI summary (in production, use actual AI service)
-    summary_text = f"Productive {meeting.get_meeting_type_display()} with {len(participants)} participants. "
-    summary_text += "Team discussed progress, identified blockers, and planned next steps."
-    
-    action_items = [
-        {
-            'item': 'Review sprint progress',
-            'owner': participants[0] if participants else 'Unassigned',
-            'priority': 'HIGH'
-        },
-        {
-            'item': 'Update task estimates',
-            'owner': participants[1] if len(participants) > 1 else 'Unassigned',
-            'priority': 'MEDIUM'
-        }
-    ]
-    
+
+    summary_text, action_items = _generate_ai_summary_gemini(meeting.transcript, meeting, participants)
+
     meeting.ai_summary = summary_text
     meeting.action_items = action_items
     meeting.save()
-    
+
     return Response({
         'status': 'success',
         'summary': summary_text,
@@ -347,3 +504,124 @@ def generate_meeting_summary(request, meeting_id):
         'meeting': ScrumMeetingSerializer(meeting).data
     })
 
+
+
+
+
+
+# ─── GitHub Integration Views ────────────────────────────────────────────────
+
+@api_view(['POST'])
+@permission_classes([IsProjectManager])
+def link_github_repo(request, project_id):
+    """Link or create a GitHub repo on a project."""
+    project = get_object_or_404(Project, id=project_id, manager=request.user)
+
+    action_type = request.data.get('action', 'link')  # 'link' or 'create'
+    token = request.data.get('token', '').strip()
+    repo_url = request.data.get('repo_url', '').strip()
+    new_repo_name = request.data.get('new_repo_name', '').strip()
+    private = bool(request.data.get('private', False))
+
+    if not token:
+        return Response({'error': 'GitHub token is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if action_type == 'create':
+        if not new_repo_name:
+            return Response({'error': 'Repository name is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        html_url, err = GitHubService.create_github_repo(
+            owner=None,  # will be inferred by GitHub from the token
+            repo_name=new_repo_name,
+            token=token,
+            description=project.description[:255] if project.description else '',
+            private=private,
+        )
+        if err:
+            try:
+                import json as _j
+                err_data = _j.loads(err)
+                err_msg = err_data.get('message', err)
+            except Exception:
+                err_msg = str(err)
+            return Response({'error': f'GitHub API error: {err_msg}'}, status=status.HTTP_400_BAD_REQUEST)
+
+        owner, repo = GitHubService.parse_repo_url(html_url)
+        project.github_repo_url = html_url
+        project.github_token = token
+        project.github_repo_owner = owner or ''
+        project.github_repo_name = repo or new_repo_name
+        project.save()
+
+        return Response({
+            'status': 'created',
+            'repo_url': html_url,
+            'owner': owner,
+            'repo': repo or new_repo_name,
+        })
+
+    else:  # link
+        if not repo_url:
+            return Response({'error': 'Repository URL or owner/repo is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        owner, repo = GitHubService.parse_repo_url(repo_url)
+        if not owner or not repo:
+            return Response({'error': 'Could not parse owner/repo from URL'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validate the token can access the repo
+        test = GitHubService._github_request(f'/repos/{owner}/{repo}', token)
+        if test is None:
+            return Response({'error': 'Cannot access repository. Check URL and token permissions.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        project.github_repo_url = f'https://github.com/{owner}/{repo}'
+        project.github_token = token
+        project.github_repo_owner = owner
+        project.github_repo_name = repo
+        project.save()
+
+        return Response({
+            'status': 'linked',
+            'repo_url': project.github_repo_url,
+            'owner': owner,
+            'repo': repo,
+        })
+
+
+@api_view(['POST'])
+@permission_classes([IsProjectManager])
+def sync_github_commits(request, project_id):
+    """Sync commits from GitHub for a project."""
+    project = get_object_or_404(Project, id=project_id, manager=request.user)
+
+    if not project.github_repo_url:
+        return Response({'error': 'No GitHub repository linked to this project'}, status=status.HTTP_400_BAD_REQUEST)
+
+    result = GitHubService.fetch_commits(project)
+
+    if result.get('error'):
+        return Response({'error': result['error']}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Return updated commits list
+    commits = CommitLog.objects.filter(project=project).order_by('-commit_time')[:20]
+    return Response({
+        'status': 'synced',
+        'new_commits': result['new'],
+        'tasks_auto_completed': result['tasks_completed'],
+        'commits': CommitLogSerializer(commits, many=True).data,
+    })
+
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def get_project_commits(request, project_id):
+    """Return recent commits for a project (manager or assigned employee)."""
+    project = get_object_or_404(Project, id=project_id)
+
+    # Access control
+    user = request.user
+    if user.role == 'PROJECT_MANAGER' and project.manager != user:
+        return Response({'error': 'Not your project'}, status=status.HTTP_403_FORBIDDEN)
+
+    limit = min(int(request.GET.get('limit', 20)), 100)
+    commits = CommitLog.objects.filter(project=project).order_by('-commit_time')[:limit]
+    return Response(CommitLogSerializer(commits, many=True).data)

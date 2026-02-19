@@ -5,8 +5,10 @@ from .views import (
     register, login, profile, manager_dashboard, employee_dashboard,
     detect_project_risks, performance_score,
     list_employees, assign_task,
-    meetings_list, meeting_detail, join_meeting, start_meeting, complete_meeting, generate_meeting_summary
+    meetings_list, meeting_detail, join_meeting, start_meeting, complete_meeting, generate_meeting_summary, save_transcript,
+    link_github_repo, sync_github_commits, get_project_commits,
 )
+
 
 router = DefaultRouter()
 router.register(r'projects', ProjectViewSet, basename='project')
@@ -38,5 +40,11 @@ urlpatterns = [
     path('meetings/<int:meeting_id>/start/', start_meeting, name='start-meeting'),
     path('meetings/<int:meeting_id>/complete/', complete_meeting, name='complete-meeting'),
     path('meetings/<int:meeting_id>/generate-summary/', generate_meeting_summary, name='generate-summary'),
+    path('meetings/<int:meeting_id>/save-transcript/', save_transcript, name='save-transcript'),
+
+    # GitHub Integration
+    path('projects/<int:project_id>/link-github/', link_github_repo, name='link-github'),
+    path('projects/<int:project_id>/sync-commits/', sync_github_commits, name='sync-commits'),
+    path('projects/<int:project_id>/commits/', get_project_commits, name='project-commits'),
 ]
 

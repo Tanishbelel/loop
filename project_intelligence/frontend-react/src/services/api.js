@@ -136,4 +136,25 @@ export const generateMeetingSummary = async (meetingId) => {
     return data;
 };
 
+export const saveTranscript = async (meetingId, transcript) => {
+    const { data } = await api.post(`/meetings/${meetingId}/save-transcript/`, { transcript });
+    return data;
+};
+
+// GitHub Integration
+export const linkGitHubRepo = async (projectId, payload) => {
+    const { data } = await api.post(`/projects/${projectId}/link-github/`, payload);
+    return data;
+};
+
+export const syncCommits = async (projectId) => {
+    const { data } = await api.post(`/projects/${projectId}/sync-commits/`);
+    return data;
+};
+
+export const getProjectCommits = async (projectId, limit = 20) => {
+    const { data } = await api.get(`/projects/${projectId}/commits/?limit=${limit}`);
+    return data;
+};
+
 export default api;

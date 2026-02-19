@@ -1,19 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { getMeetings, joinMeeting, startMeeting, completeMeeting, generateMeetingSummary } from '../services/api';
-import { Calendar, Users, Clock, Video, Play, CheckCircle, Sparkles, Loader } from 'lucide-react';
+import { Calendar, Users, Clock, Video, Play, CheckCircle, Sparkles, Loader, Radio } from 'lucide-react';
 import { format } from 'date-fns';
 
 export default function MeetingsList({ userRole, onRefresh }) {
     const [meetings, setMeetings] = useState([]);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState({});
+    const navigate = useNavigate();
 
-    useEffect(() => {
-        loadMeetings();
-    }, [onRefresh]);
-
-    const loadMeetings = async () => {
+    const loadMeetings = useCallback(async () => {
         try {
             const data = await getMeetings();
             setMeetings(data);
@@ -22,7 +20,39 @@ export default function MeetingsList({ userRole, onRefresh }) {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        loadMeetings();
+    }, [onRefresh, loadMeetings]);
+
+    // Auto-start timer: check every 30s if a scheduled meeting's time has arrived
+    useEffect(() => {
+        const checkAndAutoStart = async () => {
+            const now = new Date();
+            for (const meeting of meetings) {
+                if (meeting.status === 'SCHEDULED') {
+                    const scheduledTime = new Date(meeting.scheduled_time);
+                    if (now >= scheduledTime) {
+                        if (userRole === 'PROJECT_MANAGER') {
+                            // Auto-start for PM
+                            try {
+                                await startMeeting(meeting.id);
+                                loadMeetings();
+                            } catch (e) {
+                                console.error('Auto-start failed:', e);
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        const interval = setInterval(checkAndAutoStart, 30000);
+        // Also run immediately on mount
+        if (meetings.length > 0) checkAndAutoStart();
+        return () => clearInterval(interval);
+    }, [meetings, userRole, loadMeetings]);
 
     const handleJoinMeeting = async (meetingId) => {
         setActionLoading({ ...actionLoading, [meetingId]: 'joining' });
@@ -72,6 +102,14 @@ export default function MeetingsList({ userRole, onRefresh }) {
         }
     };
 
+    const handleEnterRoom = (meetingId) => {
+        navigate(`/meeting-room/${meetingId}`);
+    };
+
+    const isTimeArrived = (scheduledTime) => {
+        return new Date() >= new Date(scheduledTime);
+    };
+
     const getStatusColor = (status) => {
         const colors = {
             SCHEDULED: 'bg-blue-100 text-blue-800',
@@ -117,9 +155,16 @@ export default function MeetingsList({ userRole, onRefresh }) {
                                 <h3 className="text-lg font-bold text-gray-900">{meeting.title}</h3>
                                 <p className="text-sm text-gray-600">{meeting.project_name}</p>
                             </div>
-                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusColor(meeting.status)}`}>
-                                {meeting.status}
-                            </span>
+                            <div className="flex items-center gap-2">
+                                {meeting.status === 'SCHEDULED' && isTimeArrived(meeting.scheduled_time) && (
+                                    <span className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold bg-orange-100 text-orange-700 animate-pulse">
+                                        <Radio size={12} /> Time to start!
+                                    </span>
+                                )}
+                                <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusColor(meeting.status)}`}>
+                                    {meeting.status}
+                                </span>
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
@@ -179,18 +224,29 @@ export default function MeetingsList({ userRole, onRefresh }) {
                                 </button>
                             )}
 
+                            {/* Enter Meeting Room button for IN_PROGRESS meetings */}
+                            {meeting.status === 'IN_PROGRESS' && (
+                                <button
+                                    onClick={() => handleEnterRoom(meeting.id)}
+                                    className="bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700 transition-all flex items-center gap-2 text-sm animate-pulse"
+                                >
+                                    <Video size={16} />
+                                    Enter Meeting Room
+                                </button>
+                            )}
+
                             {meeting.status === 'IN_PROGRESS' && userRole === 'PROJECT_MANAGER' && (
                                 <button
                                     onClick={() => handleCompleteMeeting(meeting.id)}
                                     disabled={actionLoading[meeting.id]}
-                                    className="bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700 transition-all flex items-center gap-2 text-sm"
+                                    className="bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-gray-700 transition-all flex items-center gap-2 text-sm"
                                 >
                                     {actionLoading[meeting.id] === 'completing' ? (
                                         <Loader className="animate-spin" size={16} />
                                     ) : (
                                         <CheckCircle size={16} />
                                     )}
-                                    Complete Meeting
+                                    Complete (No Room)
                                 </button>
                             )}
 

@@ -36,8 +36,12 @@ class ProjectSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Project
-        fields = ['id', 'name', 'description', 'start_date', 'end_date', 'manager', 'manager_name', 'created_at']
-        read_only_fields = ['created_at']
+        fields = [
+            'id', 'name', 'description', 'start_date', 'end_date',
+            'manager', 'manager_name', 'created_at',
+            'github_repo_url', 'github_repo_owner', 'github_repo_name', 'last_commit_sync'
+        ]
+        read_only_fields = ['id', 'manager', 'manager_name', 'created_at', 'last_commit_sync']
     
     def validate(self, data):
         if data.get('end_date') and data.get('start_date'):
@@ -82,11 +86,18 @@ class TaskSerializer(serializers.ModelSerializer):
         return data
 
 class CommitLogSerializer(serializers.ModelSerializer):
-    task_title = serializers.CharField(source='task.title', read_only=True)
+    task_title = serializers.CharField(source='task.title', read_only=True, allow_null=True)
+    project_name = serializers.CharField(source='project.name', read_only=True, allow_null=True)
     
     class Meta:
         model = CommitLog
-        fields = ['id', 'task', 'task_title', 'commit_message', 'commit_time', 'created_at']
+        fields = [
+            'id', 'task', 'task_title', 'project', 'project_name',
+            'commit_message', 'commit_sha', 'commit_author', 'commit_author_email',
+            'branch', 'files_changed', 'lines_added', 'lines_deleted',
+            'is_meaningful', 'trivial_reason', 'github_url',
+            'commit_time', 'created_at'
+        ]
         read_only_fields = ['created_at']
 
 class RiskAlertSerializer(serializers.ModelSerializer):
@@ -109,7 +120,7 @@ class ScrumMeetingSerializer(serializers.ModelSerializer):
             'id', 'project', 'project_name', 'meeting_type', 'title', 'description',
             'scheduled_time', 'duration_minutes', 'status', 'organizer', 'organizer_name',
             'participants', 'participant_count', 'participant_names', 'agenda', 'notes',
-            'ai_summary', 'action_items', 'created_at', 'completed_at'
+            'transcript', 'ai_summary', 'action_items', 'created_at', 'completed_at'
         ]
         read_only_fields = ['created_at', 'organizer']
     

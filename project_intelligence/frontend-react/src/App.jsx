@@ -4,6 +4,7 @@ import Login from './pages/Login';
 import Home from './pages/Home';
 import ManagerDashboard from './pages/ManagerDashboard';
 import EmployeeDashboard from './pages/EmployeeDashboard';
+import MeetingRoom from './pages/MeetingRoom';
 import { Loader, LogOut } from 'lucide-react';
 import './index.css';
 
@@ -73,6 +74,14 @@ function AppRoutes() {
             <DashboardLayout>
               {user?.role === 'PROJECT_MANAGER' ? <ManagerDashboard /> : <EmployeeDashboard />}
             </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/meeting-room/:meetingId"
+        element={
+          <ProtectedRoute>
+            <MeetingRoom />
           </ProtectedRoute>
         }
       />
